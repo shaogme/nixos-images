@@ -22,6 +22,9 @@ let
 
       # Disable Memtest86+ (Force override installer default)
       boot.loader.grub.memtest86.enable = lib.mkForce false;
+
+      # Disable channel
+      system.installer.channel.enable = false;
       
       # Compression settings
       isoImage.squashfsCompression = "zstd -Xcompression-level 19";
