@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  check:
+    name: Check and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v25
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Check Nix Syntax
+        run: |
+          find . -name "*.nix" -exec nix-instantiate --parse {} > /dev/null +
+
+      - name: Setup Rust Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            tools/release-manager/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('tools/release-manager/Cargo.lock') }}
+
+      - name: Check Rust Syntax
+        working-directory: tools/release-manager
+        run: cargo check
+
+      - name: Run Rust Tests
+        working-directory: tools/release-manager
+        run: cargo test

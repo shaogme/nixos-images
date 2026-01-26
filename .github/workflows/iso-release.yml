@@ -1,12 +1,6 @@
 name: Daily NixOS ISO Release
 
 on:
-  push:
-    branches: [ "main", "master" ]
-    paths:
-      - 'iso.nix'
-      - '.github/workflows/iso-release.yml'
-      - 'tools/release-manager/**'
   schedule:
     # Beijing Time 03:00 is UTC 19:00 (previous day)
     - cron: '0 19 * * *'
@@ -31,6 +25,10 @@ jobs:
         uses: cachix/install-nix-action@v25
         with:
           nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Update npins
+        run: |
+          nix-shell -p npins --run "npins update"
 
       - name: Build ISO
         id: build
@@ -81,12 +79,12 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Check if releases.json has changed
-          if [[ -n $(git status -s releases.json) ]]; then
-            echo "releases.json has changed. Committing..."
-            git add releases.json
-            git commit -m "chore: update release history [skip ci]"
+          # Check if releases.json or npins/sources.json has changed
+          if [[ -n $(git status -s releases.json npins/sources.json) ]]; then
+            echo "Files have changed. Committing..."
+            git add releases.json npins/sources.json
+            git commit -m "chore: update release history and pins [skip ci]"
             git push
           else
-            echo "No changes to releases.json."
+            echo "No changes to releases.json or npins/sources.json."
           fi
