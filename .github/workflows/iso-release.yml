@@ -1,0 +1,91 @@
+name: Daily NixOS ISO Release
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    paths:
+      - 'iso.nix'
+      - '.github/workflows/iso-release.yml'
+      - 'tools/release-manager/**'
+  schedule:
+    # Beijing Time 03:00 is UTC 19:00 (previous day)
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release ISO
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history might be needed if we were doing complex git ops, 
+          # but here we just edit a file.
+          fetch-depth: 1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v25
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Build ISO
+        id: build
+        run: |
+          echo "Building ISO from iso.nix..."
+          # Build the ISO. This creates a 'result' symlink.
+          nix-build iso.nix -o result
+          
+          # Find the ISO file inside the result directory
+          # structure is usually result/iso/nixos-*.iso
+          ISO_FILE=$(find -L result -name "*.iso" -type f | head -n 1)
+          
+          if [ -z "$ISO_FILE" ]; then
+            echo "Error: No ISO file found in build result."
+            exit 1
+          fi
+          
+          echo "Found ISO: $ISO_FILE"
+          echo "iso_path=$ISO_FILE" >> $GITHUB_OUTPUT
+
+      - name: Setup Rust Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            tools/release-manager/target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('tools/release-manager/Cargo.lock') }}
+
+      - name: Run Release Manager
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISO_PATH: ${{ steps.build.outputs.iso_path }}
+        run: |
+          cd tools/release-manager
+          # Use release build for smaller binary / faster run (though compile time is longer)
+          # We just run it directly.
+          cargo run --release -- \
+            --iso "$ISO_PATH" \
+            --repo "${{ github.repository }}" \
+            --history "../../releases.json"
+
+      - name: Commit and Push Release History
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if releases.json has changed
+          if [[ -n $(git status -s releases.json) ]]; then
+            echo "releases.json has changed. Committing..."
+            git add releases.json
+            git commit -m "chore: update release history [skip ci]"
+            git push
+          else
+            echo "No changes to releases.json."
+          fi
