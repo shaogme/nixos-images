@@ -19,6 +19,16 @@ in
   isoImage.makeEfiBootable = true;
   isoImage.makeUsbBootable = true;
   
+  # Optimization: Disable Legacy/BIOS boot support to reduce size and complexity
+  # We assume modern hardware (UEFI)
+  isoImage.makeBiosBootable = false;
+  
+  # Optimization: Remove heavy Grub theme
+  isoImage.grubTheme = lib.mkForce null;
+
+  # Optimization: Faster boot timeout (default 10s)
+  boot.loader.timeout = lib.mkForce 2;
+
   boot.loader.grub.memtest86.enable = true;
 
   # Filesystem configuration for the ISO
