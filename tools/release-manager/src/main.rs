@@ -1,12 +1,14 @@
 use anyhow::{Context, Result};
-use chrono::{DateTime, Duration, Utc};
+use chrono::Utc;
 use clap::Parser;
 use reqwest::header::{AUTHORIZATION, USER_AGENT, CONTENT_LENGTH, CONTENT_TYPE};
 use reqwest::{Client, Body};
-use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
+
+mod release_logic;
+use release_logic::{ReleaseManager, ReleaseRecord};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -24,16 +26,6 @@ struct Args {
     history: PathBuf,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct ReleaseRecord {
-    tag_name: String,
-    created_at: DateTime<Utc>,
-    release_id: u64,
-}
-
-const MAX_RELEASES: usize = 7;
-const MIN_INTERVAL_DAYS: i64 = 7;
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
@@ -41,9 +33,11 @@ async fn main() -> Result<()> {
 
     let client = Client::new();
 
-    // 1. Load History (Blocking I/O is fine for small JSON here, but we could use tokio::fs)
-    let mut history = load_history(&args.history).unwrap_or_else(|_| Vec::new());
-    println!("Loaded {} historical releases.", history.len());
+    // 1. Load History
+    let history_records = load_history(&args.history).unwrap_or_else(|_| Vec::new());
+    println!("Loaded {} historical releases.", history_records.len());
+
+    let mut manager = ReleaseManager::new(history_records);
 
     // 2. Prepare New Release
     let now = Utc::now();
@@ -62,15 +56,13 @@ async fn main() -> Result<()> {
         release_id,
     };
 
-    // 4. Calculate Retention Policy
-    history.insert(0, new_record.clone());
-    history.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-
-    let (kept, to_delete) = apply_retention_policy(&history);
+    // 4. Calculate Retention Policy via ReleaseManager
+    let to_delete = manager.push_release(new_record);
+    let kept = manager.get_releases();
 
     println!("Retention Policy Result:");
     println!("  Keeping: {} releases", kept.len());
-    for r in &kept {
+    for r in kept {
         println!("    - {} ({})", r.tag_name, r.created_at);
     }
     println!("  Deleting: {} releases", to_delete.len());
@@ -87,7 +79,8 @@ async fn main() -> Result<()> {
     }
 
     // 6. Save Updated History
-    save_history(&args.history, &kept)?;
+    // We need to convert the slice/vec from manager back to what save_history expects or just pass the slice
+    save_history(&args.history, kept)?;
     println!("Updated {} successfully.", args.history.display());
 
     Ok(())
@@ -103,43 +96,10 @@ fn load_history(path: &Path) -> Result<Vec<ReleaseRecord>> {
     Ok(history)
 }
 
-fn save_history(path: &Path, history: &Vec<ReleaseRecord>) -> Result<()> {
+fn save_history(path: &Path, history: &[ReleaseRecord]) -> Result<()> {
     let file = std::fs::File::create(path)?;
     serde_json::to_writer_pretty(file, history)?;
     Ok(())
-}
-
-fn apply_retention_policy(all_releases: &[ReleaseRecord]) -> (Vec<ReleaseRecord>, Vec<ReleaseRecord>) {
-    if all_releases.is_empty() {
-        return (Vec::new(), Vec::new());
-    }
-
-    let mut kept = Vec::new();
-    let mut to_delete = Vec::new();
-
-    kept.push(all_releases[0].clone());
-
-    if all_releases.len() > 1 {
-        let mut last_kept = all_releases[1].clone();
-        kept.push(last_kept.clone());
-
-        for candidate in all_releases.iter().skip(2) {
-            if kept.len() >= MAX_RELEASES {
-                to_delete.push(candidate.clone());
-                continue;
-            }
-
-            let duration_since_last = last_kept.created_at.signed_duration_since(candidate.created_at);
-            if duration_since_last >= Duration::days(MIN_INTERVAL_DAYS) {
-                kept.push(candidate.clone());
-                last_kept = candidate.clone();
-            } else {
-                to_delete.push(candidate.clone());
-            }
-        }
-    }
-
-    (kept, to_delete)
 }
 
 async fn create_github_release(
