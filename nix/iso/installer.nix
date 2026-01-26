@@ -62,10 +62,6 @@ in
 
   system.nixos.variant_id = lib.mkDefault "installer";
 
-  # Enable docs in installer
-  documentation.enable = mkImageMediaOverride true;
-  documentation.nixos.enable = mkImageMediaOverride true;
-
   users.users.root.initialHashedPassword = "$6$JYLMHGrBPn1P8OW2$G/JC0qiHvsLLqR4ORvt1n78cXe8DChQQu6j8HQ24xLLGHPNaDq7FX7qjb4coeq5VTw1Ol8fXT84Dl4cwOI.AC/";
 
   security.polkit.enable = true;

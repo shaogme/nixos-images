@@ -8,10 +8,11 @@ let
       imports = [
         # Cleaned up imports - using official modules where appropriate
         "${pkgsPath}/nixos/modules/installer/cd-dvd/iso-image.nix"
-        "${pkgsPath}/nixos/modules/profiles/base.nix"
+        # "${pkgsPath}/nixos/modules/profiles/base.nix"
         
         # Local modular configuration
         ./nix/iso/installer.nix
+        ./nix/iso/base.nix
         ./nix/iso/minimal.nix
       ];
 
