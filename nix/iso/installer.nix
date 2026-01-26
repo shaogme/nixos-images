@@ -86,11 +86,10 @@ in
   boot.kernel.sysctl."vm.overcommit_memory" = "1";
 
   system.extraDependencies = with pkgs; [
-    stdenvNoCC
     busybox
     makeInitrdNGTool
-  ] ++ jq.all;
-
+    jq # Use jq instad of jq.all
+  ];
   boot.swraid.enable = true;
   boot.swraid.mdadmConf = "PROGRAM ${pkgs.coreutils}/bin/true";
   
