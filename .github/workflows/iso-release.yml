@@ -48,8 +48,9 @@ jobs:
             exit 1
           fi
           
-          echo "Found ISO: $ISO_FILE"
-          echo "iso_path=$ISO_FILE" >> $GITHUB_OUTPUT
+          ABS_ISO_FILE=$(readlink -f "$ISO_FILE")
+          echo "Found ISO: $ABS_ISO_FILE"
+          echo "iso_path=$ABS_ISO_FILE" >> $GITHUB_OUTPUT
 
       - name: Setup Rust Cache
         uses: actions/cache@v3

@@ -177,7 +177,7 @@ async fn create_github_release(
     let upload_url = upload_url_template.split('{').next().unwrap();
 
     // 2. Upload Asset (Streaming)
-    let file = File::open(iso_path).await?;
+    let file = File::open(iso_path).await.with_context(|| format!("Failed to open ISO file at {:?}", iso_path))?;
     let metadata = file.metadata().await?;
     let file_len = metadata.len();
     let file_name = iso_path.file_name().unwrap().to_string_lossy();
