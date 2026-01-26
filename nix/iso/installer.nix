@@ -6,8 +6,6 @@ in
 {
   imports = [
     ./channel.nix
-    "${modulesPath}/installer/scan/detected.nix"
-    "${modulesPath}/installer/scan/not-detected.nix"
   ];
 
   # --- From installation-cd-base.nix ---
