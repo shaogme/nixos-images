@@ -24,8 +24,8 @@ let
       # Disable Memtest86+ (Force override installer default)
       boot.loader.grub.memtest86.enable = lib.mkForce false;
 
-      # Disable channel
-      system.installer.channel.enable = false;
+      # Enable channel (needed for nix-shell)
+      system.installer.channel.enable = true;
       
       # Compression settings
       isoImage.squashfsCompression = "zstd -Xcompression-level 19";
