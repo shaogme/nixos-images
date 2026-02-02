@@ -60,11 +60,5 @@
       "vfat"
       "xfs"
     ]
-    (lib.mkIf (lib.meta.availableOn pkgs.stdenv.hostPlatform config.boot.zfs.package) {
-      zfs = lib.mkDefault true;
-    })
   ];
-
-  # Configure host id for ZFS to work
-  networking.hostId = lib.mkDefault "8425e349";
 }
