@@ -10,7 +10,16 @@ in
 
   # --- From installation-cd-base.nix ---
 
-  hardware.enableAllHardware = true;
+  hardware.enableAllHardware = false;
+
+  boot.initrd.availableKernelModules = [
+    # Storage
+    "nvme" "ahci" "xhci_pci" "ehci_pci" "usb_storage" "sd_mod" "sr_mod"
+    # VirtIO
+    "virtio_blk" "virtio_pci" "virtio_scsi"
+    # Input
+    "usbhid" "hid_generic"
+  ];
 
   console.packages = options.console.packages.default ++ [ pkgs.terminus_font ];
 

@@ -22,13 +22,11 @@ jobs:
           fetch-depth: 1
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v25
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
+        uses: nixbuild/nix-quick-install-action@v34
 
       - name: Update npins
         run: |
-          nix-shell -p npins --run "npins update"
+          nix run nixpkgs#npins -- update
 
       - name: Build ISO
         id: build
