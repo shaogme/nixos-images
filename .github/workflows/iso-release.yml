@@ -22,7 +22,11 @@ jobs:
           fetch-depth: 1
 
       - name: Install Nix
-        uses: nixbuild/nix-quick-install-action@v34
+        uses: shaogme/speedy-nix@main
+        with:
+          channel: 'https://nixos.org/channels/nixpkgs-unstable nixpkgs'
+          extra_nix_config: |
+            experimental-features = nix-command flakes
 
       - name: Update npins
         run: |
