@@ -15,21 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@main
         with:
           # Fetch full history might be needed if we were doing complex git ops, 
           # but here we just edit a file.
           fetch-depth: 1
 
-      - name: Install Nix
-        uses: shaogme/speedy-nix@main
+      - uses: cachix/install-nix-action@master
         with:
-          channel: 'https://nixos.org/channels/nixpkgs-unstable nixpkgs'
-          extra_nix_config: |
-            experimental-features = nix-command flakes
+          nix_path: nixpkgs=channel:nixos-unstable
 
       - name: Update npins
         run: |
+          nix run nixpkgs#npins -- upgrade
           nix run nixpkgs#npins -- update
 
       - name: Build ISO
